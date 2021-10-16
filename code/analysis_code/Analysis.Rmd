@@ -29,15 +29,55 @@ lm_mod <-  linear_reg() %>% set_engine("lm")
 ```
 #Linear model BodyTemp ~ ChillsSweats 
 ```{r}
-lm_bodyT<- lm(BodyTemp ~ ChillsSweats, data =expdata)
-tidy(lm_bodyT)
+lm_Fit1<- lm_mod%>% fit(BodyTemp ~ ChillsSweats, data =expdata)
+tidy(lm_Fit1)
 ```
 #Fits another linear model to the continuous outcome using all (important) predictors of interest.
 # Linear model BodyTemp ~ other predictors that I selected.
 ```{r}
-lm_bodyT<- lm(BodyTemp ~ ChillsSweats + NasalCongestion +                 RunnyNose + WeaknessYN,  data =expdata)
-tidy(lm_bodyT)
+lm_Fit2<- lm_mod%>% fit(BodyTemp ~ ChillsSweats +  NasalCongestion + RunnyNose + WeaknessYN,  data =expdata)
+tidy(lm_Fit2)
 ```
+
+#Compares the model results for the model with just the main predictor and all predictors.
+#To compare the fits of two models, you can use the anova() function with the regression objects as two separate arguments. If the resulting p-value is sufficiently low (usually less than 0.05), we conclude that the more complex model is significantly better than the simpler model, and thus favor the more complex model. If the p-value is not sufficiently low (usually greater than 0.05), we should favor the simpler model.#
+```{r}
+tidy(lm_Fit1)
+tidy(lm_Fit2)
+ANOVA <- anova(lm_Fit1$fit , lm_Fit2$fit )
+ANOVA
+
+```
+
+P value is significant, on the more complex model. p<0.001 
+
+#Fits a logistic model to the categorical outcome using only the main predictor of interest.
+
+# Set up the logistic model
+```{r}
+glm_mod <- logistic_reg() %>% set_engine("glm")
+```
+# Logistic model for Nausea and WeaknessYN
+```{r}
+lm_Fit3<- glm_mod %>% fit(Nausea ~ WeaknessYN, data=expdata )
+tidy(lm_Fit3)
+```
+#Fits another logistic model to the categorical outcome using all (important) predictors of interest.
+
+# Logistic model for Nausea and other predictors that I selected.
+```{r}
+lm_Fit4<- glm_mod %>% fit(Nausea ~ ChillsSweats + NasalCongestion +RunnyNose + WeaknessYN, data=expdata )
+tidy(lm_Fit4)
+```
+#Comparing lm_Fit3 and lm_Fit4
+```{r}
+tidy(lm_Fit3 )
+tidy(lm_Fit4)
+ANOVA.2 <- anova(lm_Fit3$fit , lm_Fit4$fit )
+ANOVA.2
+
+```
+
 
 
 
