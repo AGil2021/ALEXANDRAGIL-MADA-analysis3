@@ -1,0 +1,103 @@
+---
+title: "exploration"
+output: html_document
+---
+This file is focus in exploring the data. It goes on `processing_code` in `code` file.
+
+#load needed packages. make sure they are installed.
+```{r}
+install.packages("tidyverse")
+library(readxl) #for loading Excel files
+library(dplyr) #for data processing
+library(here) #to set paths
+library(tidyverse)
+```
+
+#path to data and loading
+#note the use of the here() package and not absolute paths
+```{r}
+data_location <-here::here("data","processed_data","newdata.rds")
+expdata<- readRDS(data_location)
+```
+#Looking the data
+```{r}
+glimpse(expdata)
+```
+#Outcomes:
+#- Main continuous outcome of interest is Body temperature
+#- Main categorical outcome is Nausea
+```{r}
+summary(expdata) 
+```
+#Categorical Analysis--> Nausea
+#Categorical outcomes must be analysis with proportions 
+
+```{r}
+table1 <- table(expdata$Nausea)
+prop.table(table1)%>% print()
+```
+65% of the population don't get Nausea and 35% get it.
+#Plot for categorical outcome 
+```{r}
+nauceaplot <- ggplot(data = expdata) +
+              geom_bar(mapping = aes(Nausea))
+nauceaplot
+#Save Plot 
+saveRDS(nauceaplot, file = here("results", "nauceaplot.rds"))
+
+```
+#Continuos Analysis--> BodyTemp
+```{r}
+summary(expdata$BodyTemp)
+```
+```{r}
+BodyT_plot<- ggplot(expdata, aes(x=BodyTemp)) + geom_histogram()
+BodyT_plot
+#Save Plot 
+saveRDS(BodyT_plot, file = here("results", "BodyT_plot.rds"))
+```
+#Predictor variables 
+#ChillsSweats, NasalCongestion, RunnyNose,
+#WeaknessYN 
+
+#BodyTemp and Nausea
+```{r}
+expdata %>% ggplot(aes(Nausea, BodyTemp) )+ geom_boxplot()
+```
+#BodyTemp and ChillsSweats
+```{r}
+expdata %>% ggplot(aes(ChillsSweats, BodyTemp) )+ geom_boxplot()
+```
+#BodyTemp and NasalCongestion
+```{r}
+expdata %>% ggplot(aes(NasalCongestion, BodyTemp) )+ geom_boxplot()                 
+```
+#BodyTemp and RunnyNose
+```{r}
+expdata %>% ggplot(aes(RunnyNose, BodyTemp) )+ geom_boxplot()                 
+```
+#BodyTemp and WeaknessYN
+```{r}
+summary(expdata$WeaknessYN)
+expdata %>% ggplot(aes(WeaknessYN , BodyTemp) )+ geom_boxplot()                 
+```
+#Nacuea Vs. Predictors
+#Nausea and ChillsSweats
+```{r}
+expdata %>% ggplot(aes(Nausea, ChillsSweats) )+ geom_count()
+```
+
+#Naucea and NasalCongestion
+```{r}
+expdata %>% ggplot(aes(Nausea, NasalCongestion) )+ geom_count()
+```
+#Naucea and RunnyNose
+```{r}
+expdata %>% ggplot(aes(Nausea, RunnyNose) )+ geom_count()
+```
+#Naucea and WeaknessYN
+```{r}
+expdata %>% ggplot(aes(Nausea, WeaknessYN ) )+ geom_count()
+```
+Based on the plot we can say that the Chills/Sweats and WeaknessYN may be can use as predictors of BodyTemp. Results were not clear for Nausea.
+

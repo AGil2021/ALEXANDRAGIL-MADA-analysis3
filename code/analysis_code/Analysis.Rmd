@@ -1,0 +1,44 @@
+---
+title: "Analysis"
+output: html_document
+---
+```{r}
+install.packages("tidymodels")
+install.packages("tidyverse")
+library(readxl) #for loading Excel files
+library(dplyr) #for data processing
+library(here) #to set paths
+library(broom)
+library(tidymodels)
+```
+
+#path to data and loading
+#note the use of the here() package and not absolute paths
+```{r}
+
+data_location <-here::here("data","processed_data","newdata.rds")
+expdata<- readRDS(data_location)
+```
+#It's time to MoDeLing!!!!!
+
+#Fits a linear model to the continuous outcome using only the main predictor of interest. According with the exploration section ChillsSweats and WeaknessYN may are a good predictor for BodyTemp...
+
+# Set the engine
+```{r}
+lm_mod <-  linear_reg() %>% set_engine("lm")
+```
+#Linear model BodyTemp ~ ChillsSweats 
+```{r}
+lm_bodyT<- lm(BodyTemp ~ ChillsSweats, data =expdata)
+tidy(lm_bodyT)
+```
+#Fits another linear model to the continuous outcome using all (important) predictors of interest.
+# Linear model BodyTemp ~ other predictors that I selected.
+```{r}
+lm_bodyT<- lm(BodyTemp ~ ChillsSweats + NasalCongestion +                 RunnyNose + WeaknessYN,  data =expdata)
+tidy(lm_bodyT)
+```
+
+
+
+
