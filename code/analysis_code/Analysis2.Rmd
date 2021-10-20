@@ -1,0 +1,139 @@
+---
+title: "RECIPES"
+output: html_document
+---
+
+```{R}
+
+install.packages("tidymodels") #fot hte recipies package and others functions
+install.packages("skimr") # for variable summaries
+library(skimr)
+library(dplyr) #for data processing
+library(here)
+library(rsample)
+library(recipes)
+library(tidymodels)
+```
+
+```{r}
+#path to data
+data_location <-here::here("data","processed_data","newdata.rds")
+dt<- readRDS(data_location)
+```
+```{r}
+glimpse(dt)
+```
+#Split the data 
+```{r}
+# Put 3/4 of the data into the training set 
+data_split <- initial_split(dt, prop = 3/4)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+```
+## New recipe to fit the categorical outcome of interest (Nausea) to all predictors
+```{r}
+Nausea_rec<- 
+  recipe(Nausea ~ ., data = train_data)
+
+summary(Nausea_rec) #To get the current set of variables and role
+```
+```{r}
+# Fit a logistic model 
+lr_mod <- 
+  logistic_reg() %>% 
+  set_engine("glm")
+
+# Model Workflow
+Nausea_wflow <-
+  workflow() %>% 
+  add_model(lr_mod) %>% 
+  add_recipe(Nausea_rec)
+
+# Preparing the recipe and train the model from the resulting predictors:
+Nausea_fit<-
+  Nausea_wflow %>%
+  fit(data = train_data )
+
+#Extracting the model coefficients
+Nausea_fit %>%
+   extract_fit_parsnip() %>% 
+   tidy()
+```
+# Evaluating Model
+# The ROC curve provides a graphical representation of a classifier’s performance
+```{r}
+predict(Nausea_fit, test_data )
+
+#Predicting probabilities
+Nausea_aug <-
+  augment(Nausea_fit, test_data)
+
+Nausea_aug %>%
+  select(Nausea, .pred_class , .pred_No, .pred_Yes)
+
+#ROC curve
+Nausea_aug%>%
+  roc_curve(truth = Nausea, .pred_No ) %>%
+  autoplot()
+# Getting the area under the curve
+Nausea_aug%>%
+  roc_auc(truth = Nausea, .pred_No )
+```
+#Since the ROC-AUC is 0.714 the model can considered acceptable.
+
+#Alternative model: model that only fits the main predictor (RunnyNose) to the categorical outcome. 
+```{r}
+#New recipe for with Predictor = RunnyNose
+Runnynose_rec<- 
+  recipe(Nausea ~ RunnyNose, data = train_data)
+```
+```{r}
+
+# Fit a logistic model 
+lr_mod <- 
+  logistic_reg() %>% 
+  set_engine("glm")
+
+# Model Workflow
+Runnynose_wflow <-
+  workflow() %>% 
+  add_model(lr_mod) %>% 
+  add_recipe(Runnynose_rec)
+
+# Preparing the recipe and train the model from the resulting predictors:
+Runnynose_fit<-
+  Runnynose_wflow %>%
+  fit(data = train_data )
+
+#Extracting the model coefficients
+Runnynose_fit %>%
+   extract_fit_parsnip() %>% 
+   tidy()
+```
+#Evaluating Alternative Model
+```{r}
+predict(Runnynose_fit, test_data )
+
+#Predicting probabilities
+Runnynose_aug <-
+  augment(Runnynose_fit, test_data)
+
+#ROC curve
+Runnynose_aug%>%
+  roc_curve(truth = Nausea, .pred_No ) %>%
+  autoplot()
+# Getting the area under the curve
+Runnynose_aug%>%
+  roc_auc(truth = Nausea, .pred_No )
+```
+# Since the ROC-AUC is 0.504, we can conclude that the alternative model is not useful. 
+
+
+
+  
+
+
+
+        
