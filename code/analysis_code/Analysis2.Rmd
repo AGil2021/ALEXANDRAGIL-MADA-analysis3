@@ -130,10 +130,123 @@ Runnynose_aug%>%
 ```
 # Since the ROC-AUC is 0.504, we can conclude that the alternative model is not useful. 
 
+## Amelia Foley - contribution begins
 
+Here, we are fitting linear models to continuous outcomes
 
+# Linear model 1 - all predictors
+```{r}
+#continuous outcome: body temperature
+#predictors: all
+bodytemp_rec<- 
+  recipe(BodyTemp ~ ., data = train_data)
+
+summary(bodytemp_rec) #To get the current set of variables and role
+
+# fit a linear model 
+lin_mod <- 
+  linear_reg() %>% set_engine("lm")
   
 
+# Model Workflow
+bodytemp_wflow <-
+  workflow() %>% 
+  add_model(lin_mod) %>% 
+  add_recipe(bodytemp_rec)
 
+# Preparing the recipe and train the model from the resulting predictors:
+bodytemp_fit<-
+  bodytemp_wflow %>%
+  fit(data = train_data )
+
+# Extracting the model coefficients
+bodytemp_fit %>%
+   extract_fit_parsnip() %>% 
+   tidy()
+```
+
+# Evaluate linear model 1
+```{r}
+#look at RMSE (performance metric for continous outcomes/linear models)
+#we'll compare RMSE values for the test and train data. Similar values indicate a model is performing well
+
+#used trained workflow to predict using test data
+predict(bodytemp_fit, test_data)
+
+#include probabilities
+bodytemp_aug <- augment(bodytemp_fit, test_data)
+
+bodytemp_aug #view bodytemp_aug, see .pred column at the end of the table
+
+#get RMSE for test data
+bodytemp_aug %>% rmse(truth = BodyTemp, .pred)
+
+#get RMSE of train data
+predict(bodytemp_fit, train_data) #make predictions w/ train data
+bodytemptrain1_aug <- augment(bodytemp_fit, train_data) #add probabilities, predictions
+bodytemptrain1_aug %>% rmse(truth = BodyTemp, .pred) #get RMSE for train data
+
+```
+
+The RMSE for linear model 1 test data is 1.181. The RMSE for linear model 1 train data is 1.105. These values seem very similar, but similarity can be relative. We'll compare the RMSE values for our second linear model as well. 
+
+# Linear model 2 - main predictor
+```{r}
+#continuous outomce: body temperature
+#main predictor: RunnyNose
+bodytemp2_rec<- 
+  recipe(BodyTemp ~ RunnyNose, data = train_data)
+
+summary(bodytemp2_rec) #To get the current set of variables and role
+
+# fit a linear model 
+lin_mod <- 
+  linear_reg() %>% set_engine("lm")
+  
+
+# Model Workflow
+bodytemp2_wflow <-
+  workflow() %>% 
+  add_model(lin_mod) %>% 
+  add_recipe(bodytemp2_rec)
+
+# Preparing the recipe and train the model from the resulting predictors:
+bodytemp2_fit<-
+  bodytemp2_wflow %>%
+  fit(data = train_data )
+
+#Extracting the model coefficients
+bodytemp2_fit %>%
+   extract_fit_parsnip() %>% 
+   tidy()
+```
+  
+# Evaluate linear model 2 
+```{r}
+#look at RMSE (performance metric for continous outcomes/linear models)
+#we'll compare RMSE values for the test and train data. Similar values indicate a model is performing well
+
+#used trained workflow to predict using test data
+predict(bodytemp2_fit, test_data)
+
+#include probabilities
+bodytemp2_aug <- augment(bodytemp2_fit, test_data)
+
+bodytemp2_aug #view bodytemp_aug, see .pred column at the end of the table
+
+#get RMSE of test data
+bodytemp2_aug %>% rmse(truth = BodyTemp, .pred)
+
+#get RMSE of train data
+predict(bodytemp2_fit, train_data) #make predictions w/ train data
+bodytemptrain_aug <- augment(bodytemp2_fit, train_data) #add probabilities, predictions
+bodytemptrain_aug %>% rmse(truth = BodyTemp, .pred) #get RMSE for train data
+
+
+```
+
+Here, we see that the RMSE for linear model 2 test data is 1.22, and the RMSE for linear model 2 train data is 1.177. This still seems like a pretty small difference, indicating that the model is performing well. 
+
+The difference between RMSE values for linear model 1 was about 0.08. The difference between RMSE values for linear model 2 was about 0.05. These values are very close in proximity, which leads me to think the models are equally fitting. However, if we were to select one model out of the two linear models, we might consider linear model 2. Since it requires only one predictor but produces similar results to the model requiring all predictors, this would be applicable and informative in clinical settings/public health applications. 
 
         
