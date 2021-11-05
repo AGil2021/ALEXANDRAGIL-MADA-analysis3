@@ -1,0 +1,103 @@
+---
+title: "Analysis3-ML"
+author: "Alexandra Gil"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("tidymodels") #fot hte recipies package and others functions
+install.packages("skimr") # for variable summaries
+library(skimr)
+library(dplyr) #for data processing
+library(here)
+library(rsample)
+library(recipes)
+library(tidymodels)
+```
+
+```{r}
+#path to data
+data_location <-here::here("data","processed_data","newdata.rds")
+dt2<- readRDS(data_location)
+```
+```{r}
+glimpse(dt2)
+```
+#Pre-processing
+#1. Feature/Variable removal:Removing Y/N Variables, such as Weakness, Cough and Myalgia
+```{r}
+dt2<- dt2%>%
+  select(-c(CoughYN, WeaknessYN, CoughYN2, MyalgiaYN ))
+```
+```{r}
+#ordered factors for Weakness, CoughIntensity, Myalgia 
+
+dt2 <- mutate(dt2, Weakness = factor(Weakness, levels = c("None", "Mild","Moderate","Severe"),ordered = TRUE))
+
+dt2 <- mutate(dt2, CoughIntensity= factor(CoughIntensity, levels = c("None", "Mild","Moderate","Severe"),ordered = TRUE))
+
+dt2 <- mutate(dt2, Myalgia = factor(Myalgia , levels = c("None", "Mild","Moderate","Severe"),ordered = TRUE))
+```
+#Removing unbalanced predictors: remove those binary predictors that have <50 entries in one category 
+```{r}
+countYes = function(v){length(v[v=="Yes"])}
+yesses = sapply(dt2,countYes)
+yesses
+```
+```{r}
+dt2<-select(dt2,-c(Hearing, Vision))
+
+glimpse(dt2)
+```
+#Data Setup
+#1. Setting the seed
+```{r}
+set.seed(123)
+```
+#Split the data 
+```{r}
+# Put 70% of the data into the training set and 30% into testing using strata=BodyTemp
+data_split <- initial_split(dt2, prop = 0.7, strata = BodyTemp)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+#Cross-Validation Folds
+
+folds<- vfold_cv(train_data, v = 5, repeats = 5, strata = BodyTemp)
+```
+#Recipe for the data and fitting
+```{r}
+BodyTemp_rec<-recipe(BodyTemp ~ ., data = train_data) %>%
+              step_dummy(all_predictors())
+```
+#Null model performance
+```{r}
+# Fit a logistic model 
+ln_mod <- 
+  linear_reg() %>% 
+  set_engine("lm") %>%
+  set_mode("regression")
+
+#Recipe for a null model - Training Data
+null_rec_Train<-recipe(BodyTemp ~ ., data = train_data) 
+
+# Null Model Workflow - Training Data
+null_wflow <-
+  workflow() %>% 
+  add_model(lm_mod) %>% 
+  add_recipe(null_rec_Train)
+
+null_fit<-
+  null_wflow %>%
+  fit(data = train_data )
+# Predictions base on null model
+prediction_null<-predict(null_fit, train_data)
+test_predictioin <-predict(null_fit, test_data)
+prediction_null
+test_predictioin
+```
