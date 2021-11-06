@@ -11,12 +11,19 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 install.packages("tidymodels") #fot hte recipies package and others functions
 install.packages("skimr") # for variable summaries
+install.packages("rpart")
+install.packages("glmnet")
+install.packages("ranger")
+```
+```{r}
 library(skimr)
 library(dplyr) #for data processing
 library(here)
 library(rsample)
 library(recipes)
 library(tidymodels)
+library(rpart.plot)  # for visualizing a decision tree
+library(vip) 
 ```
 
 ```{r}
@@ -73,7 +80,7 @@ folds<- vfold_cv(train_data, v = 5, repeats = 5, strata = BodyTemp)
 #Recipe for the data and fitting
 ```{r}
 BodyTemp_rec<-recipe(BodyTemp ~ ., data = train_data) %>%
-              step_dummy(all_predictors())
+              step_dummy(all_nominal_predictors())
 ```
 #Null model performance
 ```{r}
@@ -95,9 +102,103 @@ null_wflow <-
 null_fit<-
   null_wflow %>%
   fit(data = train_data )
+  
 # Predictions base on null model
 prediction_null<-predict(null_fit, train_data)
-test_predictioin <-predict(null_fit, test_data)
-prediction_null
-test_predictioin
+
+null_aug <- augment(null_fit, train_data)
+
+null_aug %>% select(BodyTemp)
+
+# Extracting the model coefficients
+null_fit %>%
+   extract_fit_parsnip() %>% 
+   tidy()
+# Getting Root RMSE
+rmse_traindata <-null_aug%>%
+  rmse(truth = BodyTemp, .pred)
+
+rmse_traindata
+#RMSE= 1.102
+
+##### Predicting using Test_data
+prediction_null_testdata<-predict(null_fit, test_data)
+
+null_aug_testdata <- augment(null_fit, test_data)
+
+null_aug_testdata %>% select(BodyTemp)
+
+# Getting Root RMSE
+rmse_testdata <-null_aug_testdata%>%
+  rmse(truth = BodyTemp, .pred)
+
+rmse_testdata
+#RMSE= 1.199
+
+```
+
+#Model tuning and fitting
+##### FITTING A TREE
+```{r}
+tune_spec <- 
+  decision_tree(
+    cost_complexity = tune(),
+    tree_depth = tune()
+  ) %>% 
+  set_engine("rpart") %>% 
+  set_mode("regression")
+tune_spec
+#tuning grid specification
+tree_grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          levels = 5)
+tree_grid
+#cross validation
+set.seed(123)
+cell_folds <- vfold_cv(train_data)
+#workflow
+set.seed(123)
+
+tree_wf <- workflow() %>%
+  add_model(tune_spec) %>%
+  add_recipe(BodyTemp_rec) # Recipe from line 82
+
+#model tuning with `tune_grid()`
+tree_res <- 
+  tree_wf %>% 
+  tune_grid(
+    resamples = cell_folds,
+    grid = tree_grid
+    )
+tree_res %>% collect_metrics()
+```
+#Ploting Metrics
+```{r}
+tree_res %>% autoplot()
+```
+#Selecting best TREE and Fitting our model
+```{r}
+#Selecting the best Tree base on RSME
+best_tree <- tree_res %>%
+  select_best("rmse")
+best_tree
+
+# Finalizing the model with the best Tree
+final_wf <- 
+  tree_wf %>% 
+  finalize_workflow(best_tree)
+#Fit the model
+tree_fit <- final_wf %>%
+  fit(train_data) 
+tree_fit
+```
+```{r}
+####More ploting
+final_fit %>%
+  collect_metrics()
+
+final_fit %>%
+  collect_predictions() %>% 
+  roc_curve(class, .pred_PS) %>% 
+  autoplot()
 ```
